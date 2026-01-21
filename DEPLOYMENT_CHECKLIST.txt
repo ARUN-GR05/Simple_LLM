@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# DEPLOYMENT CHECKLIST
+
+echo "🚀 VERCEL DEPLOYMENT CHECKLIST"
+echo "=============================="
+echo ""
+
+# Check 1: Git status
+echo "✓ Step 1: Check if code is on GitHub"
+echo "  Run: git status"
+echo "  Should show: 'Your branch is up to date with origin/main'"
+echo ""
+
+# Check 2: Backend
+echo "✓ Step 2: Deploy Backend (Render.com)"
+echo "  [ ] Go to render.com"
+echo "  [ ] Click 'New' → 'Web Service'"
+echo "  [ ] Connect GitHub and select Simple_LLM"
+echo "  [ ] Set Root Directory: backend"
+echo "  [ ] Set Build Command: pip install -r requirements.txt"
+echo "  [ ] Set Start Command: gunicorn -w 4 -b 0.0.0.0:8000 app:app"
+echo "  [ ] Click Deploy"
+echo "  [ ] Wait 3-5 minutes"
+echo "  [ ] COPY your URL (looks like: https://simple-llm-api.onrender.com)"
+echo ""
+
+# Check 3: Frontend
+echo "✓ Step 3: Deploy Frontend (Vercel.com)"
+echo "  [ ] Go to vercel.com"
+echo "  [ ] Sign in with GitHub"
+echo "  [ ] Click 'Add New' → 'Project'"
+echo "  [ ] Select Simple_LLM repo"
+echo "  [ ] Set Root Directory: frontend"
+echo "  [ ] Framework: Next.js"
+echo "  [ ] Add Environment Variable:"
+echo "      Key: NEXT_PUBLIC_API_URL"
+echo "      Value: [PASTE YOUR RENDER URL HERE]"
+echo "  [ ] Click Deploy"
+echo "  [ ] Wait 2-3 minutes"
+echo ""
+
+# Check 4: Test
+echo "✓ Step 4: Test Your App"
+echo "  [ ] Go to your Vercel URL"
+echo "  [ ] Enter prompt: 'The cat'"
+echo "  [ ] Click 'Generate Text'"
+echo "  [ ] See results = SUCCESS! ✅"
+echo ""
+
+echo "=============================="
+echo "Need help? See DEPLOY_STEP_BY_STEP.md"
