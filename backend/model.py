@@ -1,5 +1,4 @@
-import torch
-import torch.nn as nn
+import random
 from collections import defaultdict
 
 
@@ -24,64 +23,49 @@ class SimpleTokenizer:
         return " ".join([reverse_vocab.get(token, "<UNK>") for token in tokens])
 
 
-class EmbeddingLayer(nn.Module):
-    """Convert token IDs to embeddings"""
-    def __init__(self, vocab_size, embed_dim):
-        super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
+class SimpleLLM:
+    """Simple LLM without PyTorch (lightweight for deployment)"""
+    def __init__(self, vocab_size, embed_dim=16, num_blocks=2):
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
+        self.num_blocks = num_blocks
+        # Simple word co-occurrence matrix for lightweight inference
+        self.word_pairs = defaultdict(list)
+    
+    def train(self, texts, tokenizer):
+        """Learn word patterns from training texts"""
+        for text in texts:
+            words = text.split()
+            for i in range(len(words) - 1):
+                self.word_pairs[words[i]].append(words[i + 1])
+    
+    def predict_next(self, word):
+        """Predict next word based on learned patterns"""
+        if word in self.word_pairs and self.word_pairs[word]:
+            return random.choice(self.word_pairs[word])
+        # Fallback words
+        common_words = ["the", "a", "and", "cat", "dog", "sat", "mat", "on", "is", "was"]
+        return random.choice(common_words)
+    
+    def generate(self, prompt, max_length=20, temperature=0.7):
+        """Generate text"""
+        words = prompt.split()
+        
+        for _ in range(max_length):
+            if not words:
+                break
+            
+            # Get last word and predict next
+            current_word = words[-1].strip('.,!?')
+            next_word = self.predict_next(current_word.lower())
+            
+            # Apply temperature (randomness)
+            if random.random() > temperature:
+                # Sometimes pick random word instead
+                common = ["the", "a", "and", "is", "was", "in", "on", "at", "to", "of"]
+                next_word = random.choice(common)
+            
+            words.append(next_word)
+        
+        return " ".join(words[len(prompt.split()):])
 
-    def forward(self, x):
-        return self.embedding(x)
-
-
-class SelfAttention(nn.Module):
-    """Self-attention mechanism"""
-    def __init__(self, embed_dim):
-        super().__init__()
-        self.query = nn.Linear(embed_dim, embed_dim)
-        self.key = nn.Linear(embed_dim, embed_dim)
-        self.value = nn.Linear(embed_dim, embed_dim)
-
-    def forward(self, x):
-        Q = self.query(x)
-        K = self.key(x)
-        V = self.value(x)
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / (x.size(-1) ** 0.5)
-        weights = torch.softmax(scores, dim=-1)
-        output = torch.matmul(weights, V)
-        return output
-
-
-class TransformerBlock(nn.Module):
-    """Transformer block with attention and feed-forward"""
-    def __init__(self, embed_dim):
-        super().__init__()
-        self.attention = SelfAttention(embed_dim)
-        self.feed_forward = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim * 4),
-            nn.ReLU(),
-            nn.Linear(embed_dim * 4, embed_dim)
-        )
-        self.norm1 = nn.LayerNorm(embed_dim)
-        self.norm2 = nn.LayerNorm(embed_dim)
-
-    def forward(self, x):
-        x = x + self.attention(self.norm1(x))
-        x = x + self.feed_forward(self.norm2(x))
-        return x
-
-
-class SimpleLLM(nn.Module):
-    """Simple transformer-based language model"""
-    def __init__(self, vocab_size, embed_dim, num_blocks):
-        super().__init__()
-        self.embedding = EmbeddingLayer(vocab_size, embed_dim)
-        self.blocks = nn.ModuleList([TransformerBlock(embed_dim) for _ in range(num_blocks)])
-        self.fc = nn.Linear(embed_dim, vocab_size)
-
-    def forward(self, x):
-        x = self.embedding(x)
-        for block in self.blocks:
-            x = block(x)
-        logits = self.fc(x)
-        return logits

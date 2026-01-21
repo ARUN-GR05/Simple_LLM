@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import torch
-import torch.nn.functional as F
 from model import SimpleLLM, SimpleTokenizer
 
 # Initialize FastAPI app
@@ -20,7 +18,6 @@ app.add_middleware(
 # Global model and tokenizer
 model = None
 tokenizer = None
-device = torch.device("cpu")
 
 
 def init_model():
@@ -29,12 +26,16 @@ def init_model():
     
     # Training data
     texts = [
-        "The cat sat on the mat.",
-        "The dog barked at the cat.",
-        "A bird flew over the house.",
-        "The sun rises in the east.",
-        "Apples and bananas are fruits.",
-        "She drinks coffee every morning.",
+        "The cat sat on the mat",
+        "The dog barked at the cat",
+        "A bird flew over the house",
+        "The sun rises in the east",
+        "Apples and bananas are fruits",
+        "She drinks coffee every morning",
+        "The weather is nice today",
+        "I love programming in Python",
+        "Cats are very cute animals",
+        "Dogs are loyal companions",
     ]
     
     # Initialize tokenizer
@@ -44,8 +45,8 @@ def init_model():
     
     # Initialize model
     model = SimpleLLM(vocab_size=vocab_size, embed_dim=16, num_blocks=2)
-    model.to(device)
-    model.eval()
+    # Train the model
+    model.train(texts, tokenizer)
 
 
 # Request/Response models
@@ -81,22 +82,13 @@ async def health():
 async def generate(request: GenerateRequest):
     """Generate text based on prompt"""
     try:
-        # Encode prompt
-        tokens = tokenizer.encode(request.prompt)
-        tokens = torch.tensor([tokens], dtype=torch.long).to(device)
-        
         # Generate text
-        with torch.no_grad():
-            for _ in range(request.max_length):
-                logits = model(tokens)
-                next_logits = logits[0, -1, :] / request.temperature
-                probabilities = F.softmax(next_logits, dim=-1)
-                next_token = torch.multinomial(probabilities, 1)
-                tokens = torch.cat([tokens, next_token.unsqueeze(0)], dim=1)
+        generated_text = model.generate(
+            request.prompt,
+            max_length=request.max_length,
+            temperature=request.temperature
+        )
         
-        # Decode generated tokens
-        generated_tokens = tokens[0].tolist()
-        generated_text = tokenizer.decode(generated_tokens[len(tokenizer.encode(request.prompt)):])
         full_text = request.prompt + " " + generated_text
         
         return GenerateResponse(
